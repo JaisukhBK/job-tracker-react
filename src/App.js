@@ -34,7 +34,6 @@ function App() {
       const { data, error } = await supabase
         .from('jobs')
         .select('*')
-        .order('created_at', { ascending: false });
       if (error) {
         console.error('Supabase fetch error:', error);
         setError('Failed to load jobs: ' + error.message);
