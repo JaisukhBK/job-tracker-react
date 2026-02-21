@@ -17,26 +17,36 @@ function StatCard(props) {
 function App() {
   const [jobs, setJobs] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [activeFilter, setActiveFilter] = useState('All');
   const [form, setForm] = useState({
     company: '', role: '', status: 'Applied', type: 'Internship', date_applied: ''
   });
 
-  // ── LOAD jobs from Supabase when app opens ──
   useEffect(() => {
     fetchJobs();
   }, []);
 
   async function fetchJobs() {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('jobs')
-      .select('*')
-      .order('created_at', { ascending: false });
-    if (error) {
-      console.error('Error fetching:', error);
-    } else {
-      setJobs(data);
+    setError(null);
+    try {
+      const { data, error } = await supabase
+        .from('jobs')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) {
+        console.error('Supabase fetch error:', error);
+        setError('Failed to load jobs: ' + error.message);
+        setJobs([]);
+      } else {
+        console.log('Fetched jobs:', data);
+        setJobs(data || []);
+      }
+    } catch (err) {
+      console.error('Network error:', err);
+      setError('Network error: ' + err.message);
+      setJobs([]);
     }
     setLoading(false);
   }
@@ -45,7 +55,6 @@ function App() {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
 
-  // ── ADD job to Supabase ──
   async function handleAdd() {
     if (!form.company || !form.role) return;
     const newJob = {
@@ -55,28 +64,39 @@ function App() {
       type: form.type,
       date_applied: form.date_applied || null,
     };
-    const { data, error } = await supabase
-      .from('jobs')
-      .insert([newJob])
-      .select();
-    if (error) {
-      console.error('Error adding:', error);
-    } else {
-      setJobs([data[0], ...jobs]);
-      setForm({ company: '', role: '', status: 'Applied', type: 'Internship', date_applied: '' });
+    try {
+      const { data, error } = await supabase
+        .from('jobs')
+        .insert([newJob])
+        .select();
+      if (error) {
+        console.error('Supabase insert error:', error);
+        alert('Error adding job: ' + error.message);
+      } else {
+        setJobs([data[0], ...jobs]);
+        setForm({ company: '', role: '', status: 'Applied', type: 'Internship', date_applied: '' });
+      }
+    } catch (err) {
+      console.error('Network error adding job:', err);
+      alert('Network error: ' + err.message);
     }
   }
 
-  // ── DELETE job from Supabase ──
   async function handleDelete(id) {
-    const { error } = await supabase
-      .from('jobs')
-      .delete()
-      .eq('id', id);
-    if (error) {
-      console.error('Error deleting:', error);
-    } else {
-      setJobs(jobs.filter(j => j.id !== id));
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .delete()
+        .eq('id', id);
+      if (error) {
+        console.error('Supabase delete error:', error);
+        alert('Error removing job: ' + error.message);
+      } else {
+        setJobs(jobs.filter(j => j.id !== id));
+      }
+    } catch (err) {
+      console.error('Network error deleting job:', err);
+      alert('Network error: ' + err.message);
     }
   }
 
@@ -136,8 +156,6 @@ function App() {
         <div style={{ fontSize: '13px', fontWeight: '700', color: '#1A3F6F', marginBottom: '10px' }}>
           ➕ Add New Application
         </div>
-
-        {/* Row 1 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px', marginBottom: '10px' }}>
           <div>
             <label style={labelStyle}>Company</label>
@@ -156,8 +174,6 @@ function App() {
             </select>
           </div>
         </div>
-
-        {/* Row 2 */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
           <div>
             <label style={labelStyle}>Status</label>
@@ -191,8 +207,6 @@ function App() {
         background: 'white', borderRadius: '10px',
         boxShadow: '0 2px 8px rgba(0,0,0,0.06)', minHeight: 0
       }}>
-
-        {/* Table toolbar */}
         <div style={{
           padding: '10px 16px', borderBottom: '1px solid #F1F5F9',
           flexShrink: 0, display: 'flex', justifyContent: 'space-between', alignItems: 'center'
@@ -215,21 +229,25 @@ function App() {
           </div>
         </div>
 
-        {/* Scrollable table */}
         <div style={{ flex: 1, overflowY: 'auto', minHeight: 0 }}>
           {loading ? (
             <div style={{ textAlign: 'center', padding: '40px', color: '#64748B', fontSize: '14px' }}>
               ⏳ Loading your applications...
+            </div>
+          ) : error ? (
+            <div style={{ textAlign: 'center', padding: '40px', color: '#EF4444', fontSize: '13px' }}>
+              ❌ {error}
+              <br /><br />
+              <button onClick={fetchJobs} style={{ padding: '8px 16px', background: '#1A3F6F', color: 'white', border: 'none', borderRadius: '8px', cursor: 'pointer', fontSize: '12px' }}>
+                Retry
+              </button>
             </div>
           ) : (
             <table style={{ width: '100%', borderCollapse: 'collapse' }}>
               <thead>
                 <tr style={{ background: '#1A3F6F', position: 'sticky', top: 0, zIndex: 1 }}>
                   {['Company', 'Role', 'Type', 'Status', 'Date Applied', ''].map(h => (
-                    <th key={h} style={{
-                      padding: '10px 16px', textAlign: 'left',
-                      color: '#94A3B8', fontSize: '10px', textTransform: 'uppercase'
-                    }}>{h}</th>
+                    <th key={h} style={{ padding: '10px 16px', textAlign: 'left', color: '#94A3B8', fontSize: '10px', textTransform: 'uppercase' }}>{h}</th>
                   ))}
                 </tr>
               </thead>
