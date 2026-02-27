@@ -99,6 +99,20 @@ function App() {
     }
   }
 
+  // ✅ handleStatusChange is now INSIDE App()
+  async function handleStatusChange(id, newStatus) {
+    const { error } = await supabase
+      .from('jobs')
+      .update({ status: newStatus })
+      .eq('id', id);
+    if (error) {
+      console.error('Error updating status:', error);
+      alert('Error updating status: ' + error.message);
+    } else {
+      setJobs(jobs.map(j => j.id === id ? { ...j, status: newStatus } : j));
+    }
+  }
+
   const applied    = jobs.filter(j => j.status === 'Applied').length;
   const interviews = jobs.filter(j => j.status === 'Interview').length;
   const offers     = jobs.filter(j => j.status === 'Offer').length;
@@ -263,13 +277,28 @@ function App() {
                     <td style={{ padding: '11px 16px', color: '#475569', fontSize: '12px' }}>{job.role}</td>
                     <td style={{ padding: '11px 16px', color: '#475569', fontSize: '12px' }}>{job.type}</td>
                     <td style={{ padding: '11px 16px' }}>
-                      <span style={{
-                        padding: '3px 10px', borderRadius: '20px', fontSize: '11px', fontWeight: '700',
-                        background: job.status === 'Applied' ? '#EFF6FF' : job.status === 'Screening' ? '#E0F2FE' : job.status === 'Interview' ? '#F5F3FF' : job.status === 'Offer' ? '#ECFDF5' : '#FEF2F2',
-                        color: job.status === 'Applied' ? '#3B82F6' : job.status === 'Screening' ? '#0EA5E9' : job.status === 'Interview' ? '#8B5CF6' : job.status === 'Offer' ? '#10B981' : '#EF4444',
-                      }}>
-                        {job.status}
-                      </span>
+                      <select
+                        value={job.status}
+                        onChange={(e) => handleStatusChange(job.id, e.target.value)}
+                        style={{
+                          padding: '3px 10px',
+                          borderRadius: '20px',
+                          fontSize: '11px',
+                          fontWeight: '700',
+                          border: 'none',
+                          cursor: 'pointer',
+                          outline: 'none',
+                          background: job.status === 'Applied' ? '#EFF6FF' : job.status === 'Screening' ? '#E0F2FE' : job.status === 'Interview' ? '#F5F3FF' : job.status === 'Offer' ? '#ECFDF5' : '#FEF2F2',
+                          color: job.status === 'Applied' ? '#3B82F6' : job.status === 'Screening' ? '#0EA5E9' : job.status === 'Interview' ? '#8B5CF6' : job.status === 'Offer' ? '#10B981' : '#EF4444',
+                        }}
+                      >
+                        <option value="Applied">Applied</option>
+                        <option value="Screening">Screening</option>
+                        <option value="Interview">Interview</option>
+                        <option value="Offer">Offer</option>
+                        <option value="Rejected">Rejected</option>
+                        <option value="Withdrawn">Withdrawn</option>
+                      </select>
                     </td>
                     <td style={{ padding: '11px 16px', color: '#475569', fontSize: '12px' }}>{job.date_applied || '—'}</td>
                     <td style={{ padding: '11px 16px' }}>
